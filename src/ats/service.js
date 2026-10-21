@@ -18,6 +18,8 @@ import { JOB_REQUIREMENTS_RESPONSE_FORMAT, SCORE_RESPONSE_FORMAT } from './schem
  * never serves an old-scale number next to a new one.
  */
 export function scoreVersion() {
+  // The prompt and model are unchanged, but old scores may include unsupported half credit.
+  // Hosts comparing this version can invalidate those cached scores and recompute them.
   return `${PROMPT_VERSIONS.score}/${models().ats.model}/grounding.v2`;
 }
 

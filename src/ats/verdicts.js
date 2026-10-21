@@ -113,13 +113,17 @@ export function checkedVerdicts(requirements, answer, { resumeText, evidence = n
   const given = new Map((Array.isArray(answer?.verdicts) ? answer.verdicts : []).filter((v) => Number.isInteger(v?.id)).map((v) => [v.id, v]));
   return requirements.map((req, id) => {
     const said = given.get(id);
-    let verdict = VERDICT_POINTS[said?.verdict] !== undefined ? said.verdict : 'missing';
+    // Only own enum keys are verdicts; inherited names such as "toString" would yield NaN scores.
+    let verdict = typeof said?.verdict === 'string' && Object.hasOwn(VERDICT_POINTS, said.verdict) ? said.verdict : 'missing';
     const quote = typeof said?.quote === 'string' ? said.quote.trim() : '';
+    // An invented or empty quote proves nothing. Downgrading met to weak would still grant
+    // half credit; missing grants zero and keeps it out of tailoring's weak-evidence list.
     if (verdict !== 'missing' && !quoteInResume(quote, resumeText)) verdict = 'missing';
     else if (verdict === 'met' && evidence !== null && !holds(evidence, squash(quote))) verdict = 'weak';
     else if (verdict === 'met' && listLike(quote)) verdict = 'weak';
     else if (verdict === 'met' && req.kind !== 'education' && MEASURED_RE.test(req.text) && !statesFigure(quote)) verdict = 'weak';
     if (req.kind === 'experience') verdict = lowest(verdict, yearsCap(req.text, supportedYears));
+    // Do not pass rejected quotes to callers as supporting evidence.
     return { ...req, verdict, quote: verdict === 'missing' ? '' : quote };
   });
 }

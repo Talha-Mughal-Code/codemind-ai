@@ -6,6 +6,8 @@ import { PROMPT_VERSIONS } from '../promptVersions.js';
 import { installFakeLlm } from '../testing/fakeLlm.js';
 
 const resumeText = 'Built Python services on PostgreSQL.';
+// With one requirement and no scored skills, scores of 0/50/100 directly expose
+// missing/weak/met credit without other categories masking the grounding effect.
 const requirement = { text: 'Design and own production APIs', kind: 'responsibility', priority: 'required' };
 const job = { description: requirement.text, requirements: [requirement] };
 const answer = (verdict, quote) => ({ verdicts: [{ id: 0, verdict, quote }], matchedKeywords: [] });
@@ -17,6 +19,8 @@ afterEach(() => {
   llm = null;
 });
 
+// Providers may return valid JSON containing invalid evidence. Both met and weak
+// must be rejected, including non-string quotes and quotes with no actual words.
 for (const quote of ['Designed payment APIs for millions of users', '', '   ', '!!!', null, 42, {}]) {
   for (const verdict of ['met', 'weak']) {
     test(`a ${verdict} with unverified evidence ${JSON.stringify(quote)} earns no credit`, () => {
@@ -43,6 +47,8 @@ test('empty or malformed verdict lists remain missing without throwing', () => {
 });
 
 test('a grounded prior verdict is preserved when a rewrite keeps its evidence', () => {
+  // The existing before/after stabilization may retain credit from a verified earlier
+  // quote, but only while the rewritten resume still contains that quote.
   const prior = {
     resumeText,
     requirements: [{ ...requirement, verdict: 'met', quote: 'Built Python services on PostgreSQL' }],
@@ -52,6 +58,8 @@ test('a grounded prior verdict is preserved when a rewrite keeps its evidence', 
 });
 
 test('the public scorer rejects invented evidence without another model call', async () => {
+  // A successful API response can contain bad evidence. Reject it in code rather than
+  // spend another model call; usage still records the completed request as successful.
   llm = installFakeLlm([answer('met', 'Designed payment APIs for millions of users')]);
   const result = await quickScoreResume(resumeText, job);
   assert.equal(result.score, 0);

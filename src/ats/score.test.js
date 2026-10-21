@@ -89,6 +89,7 @@ test('the model\'s verdicts are checked: a quote not in the resume earns no cred
     },
     { resumeText: text, supportedYears: 1 }
   );
+  // The fabricated payments quote used to earn weak (half) credit; it now earns none.
   assert.deepEqual(verdicts.map((v) => v.verdict), ['missing', 'missing', 'missing', 'missing'], 'years cap; a made-up quote; an unanswered one');
   assert.equal(verdicts[1].quote, '');
   assert.equal(verdicts[2].quote, '');
